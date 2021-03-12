@@ -78,10 +78,19 @@ bv1 = BitVector(hexstring="02")
 bv2 = BitVector(hexstring="63")
 bv3 = bv1.gf_multiply_modular(bv2, AES_modulus, 8)
 
-def getConstant(item):
-    item=item[2:]
-    bv1 = BitVector(hexstring="02")
-    bv2 = BitVector(hexstring=item)
+def getConstant(item1,item2):
+    item2=item2[2:]
+    bv1 = BitVector(hexstring=item1)
+    bv2 = BitVector(hexstring=item2)
+
+    bv3 = bv1.gf_multiply_modular(bv2, AES_modulus, 8)
+    # print(hex(int(str(bv3),2)))
+
+    return hex(int(str(bv3),2))
+def getConstant2(item1,item2):
+    item2=item2[2:]
+    bv1 = item1
+    bv2 = BitVector(hexstring=item2)
 
     bv3 = bv1.gf_multiply_modular(bv2, AES_modulus, 8)
     # print(hex(int(str(bv3),2)))
