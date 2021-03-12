@@ -1,11 +1,10 @@
 # key= input()
 from collections import deque
-from bitvector_demo import Sbox,InvSbox,getConstant ,Mixer,getConstant2
+from bitvector_demo import *
 
 
 def printing(list):
-    print("round 0")
-
+    # print("round 0")
     for i in range(len(list)):
         print(list[i])
         if (i+1 )%4 == 0  and (i+1)/4 !=11:
@@ -14,6 +13,7 @@ def printing(list):
 keyText = "BUET CSE16 Batch"
 plainText="WillGraduateSoon"
 cypherText=[]
+w=[]
 
 
 def textMatrixBuilder(plain):
@@ -25,8 +25,11 @@ def textMatrixBuilder(plain):
     elif len(plain)<16:
         plain = "0000000000000000"+ plain+"0"
         plain = plain[-16:-1]
-    print(plain)
+    # print(plain)
     plainTextChunk= [ hex(ord(plainText[i])) for i in range(len(plain))]
+    print("plaintext : ",plain)
+    print("plainText  Hex : " ,plainTextChunk)
+
     
 
     for i in range(4):
@@ -34,7 +37,7 @@ def textMatrixBuilder(plain):
         output.append(temp)
     n = len(output)
     output = [[row[i] for row in output] for i in range(n)]
-    print("plain text matrix is\n ")
+    # print("plain text matrix is\n ")
     return output
 
 
@@ -43,14 +46,13 @@ def textMatrixBuilder(plain):
 def generatorFunction(list,roundcondition):
     for i in range(4):
         if int(list[i],16)< int('0xf',16):
-            print('here ' , list[i])
             list[i] = "{0:#0{1}x}".format(int(list[i],16),4)
             # print(list[i])
     temp=[ hex(Sbox[(int(list[i][2],16))*16+int(list[i][3],16)])  for  i in range(4)]
     temp.append(temp.pop(0))  #used  for shifting
     for i in range(len(temp)):
         temp[i] = hex(int(temp[i],16) ^ int(roundcondition[i],16))
-    print("generating output is " , temp)
+    # print("generating output is " , temp)
     return temp
 
     
@@ -59,19 +61,22 @@ def generatorFunction(list,roundcondition):
 def allKeyGenerator(key):
     p= 0
     q= 4
-    w= []
     if len(key)>16:
         key = key[0:16]
     elif len(key)<16:
-        key = "0000000000000000"+ key+"0"
-        key = key[-16:-1]
+        key = "0000000000000000"+ key
+        key = key[-16:]
     hexKey=[]
     for i in range(len(key)):
         hexKey.append(hex(ord(key[i])))
+    print("keytext :",key)
+    print("key Hex :" ,hexKey)
+
     for i in range(4):
         temp = hexKey[p+i*4:q+i*4]
         w.append(temp)
 
+    
     rc=['0x01','0x00','0x00','0x00']
 
     for i in range(10):
@@ -98,25 +103,87 @@ def encryptionStarter():
     n = len(starter)
     starter = [[row[i] for row in starter] for i in range(n)]
     current = textMatrixBuilder(plainText)
-
-    print(starter)
     xoringStarter(starter,current)
 
     for i in range(1,11):
         roundKey = w[4*i:4*i+4]
-        roundKey = [[row[i] for row in roundKey] for i in range(n)]
+        roundKey = [[row[i] for row in roundKey] for i in range(n)]  #transposing to colum major format
         current= firstRound(current,roundKey,i)
 
-
+    global cypherText
     cypherText = [[row[i] for row in current] for i in range(n)]
-    print("cypherText is " ,cypherText)
+    s=""
+    print("cyphertext is", cypherText)
+    s=" "
+    for  i in range(len(current)):
+        for  j in range(len(current[i])):
+            if int(current[i][j],16)<=int('0xf',16):
+                    current[i][j] = "{0:#0{1}x}".format(int(current[i][j],16),4)
+            current[i][j]=current[i][j][2:]
+            obj=  bytes.fromhex(current[i][j])
+
+            s=s+ obj.decode("unicode_escape")
+    print("string is ",s)
+
 
 def decryptionStarter():
-    print()
+    starter= w[-4:] 
+    starter = [[row[i] for row in starter] for i in range(len(starter))]
+    current= [[row[i] for row in cypherText] for i in range(len(cypherText))]
+    xoringStarter(starter,current)
 
+    for i in range(1,11):
+        roundKey = w[-4*i -4 :-4*i]
+        roundKey = [[row[i] for row in roundKey] for i in range(4)]  #transposing to colum major format
+        current= decryptRound(current,roundKey,i)
+    current= [[row[i] for row in current] for i in range(4)]
+    print("decrypted key is " ,current)
+    s=" "
+    for  i in range(len(current)):
+        for  j in range(len(current[i])):
+            if int(current[i][j],16)<=int('0xf',16):
+                    current[i][j] = "{0:#0{1}x}".format(int(current[i][j],16),4)
+            current[i][j]=current[i][j][2:]
+            obj=  bytes.fromhex(current[i][j])
+            s=s+ obj.decode("UTF-8")
+    print("string is ",s)
 
+def decryptRound(current,cycle,roundNum):
+    for i in range(4):
+        inverseShifter(current[i],i)
+    inverseSub(current)
+    current = xoringStarter(cycle,current)
+    if( roundNum != 10):
+        current = DecryptMixerColum(current)
 
-    
+    return current
+
+def inverseSub(list):
+    for i in range(4):
+        for j in range(4):
+            if int(list[i][j],16)<=int('0xf',16):
+                    list[i][j] = "{0:#0{1}x}".format(int(list[i][j],16),4)
+            list[i][j]= hex(InvSbox[(int(list[i][j][2],16))*16+int(list[i][j][3],16)])
+
+def inverseShifter(list,cycle):   
+    for i in range(cycle):
+        list.insert(0,(list.pop(len(list)-1)))
+
+def DecryptMixerColum(list):
+    result = [['0x00','0x00','0x00','0x00'],
+                ['0x00','0x00','0x00','0x00'],
+                ['0x00','0x00','0x00','0x00'],
+                ['0x00','0x00','0x00','0x00']]
+         
+
+    for i in range(len(InvMixer)):
+        # iterate through columns of Y
+        for j in range(len(list)):
+            # iterate through rows of Y
+            for k in range(len(list)):
+                result[i][j] =  hex(int(result[i][j],16) ^ int(getConstant2(InvMixer[i][k],list[k][j]),16))
+
+    return result
  
 def firstRound(current,cycle,roundNum):
     substituter(current)
@@ -127,7 +194,6 @@ def firstRound(current,cycle,roundNum):
     current = xoringStarter(cycle,current)
 
     return current
-    print ( 'after round ' ,current)
 
 def MixerColum(list):
     result = [['0x00','0x00','0x00','0x00'],
@@ -157,6 +223,9 @@ def shifter(list,cycle):
     for i in range(cycle):
         list.append(list.pop(0))
 
+def main():
+    encryptionStarter()
+    decryptionStarter()
 
-encryptionStarter()
-
+if __name__ == "__main__": 
+    main()
