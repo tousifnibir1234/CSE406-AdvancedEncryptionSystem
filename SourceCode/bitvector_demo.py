@@ -70,7 +70,7 @@ b = BitVector(hexstring="4E")
 int_val = b.intValue()
 s = Sbox[int_val]
 s = BitVector(intVal=s, size=8)
-print(s.get_bitvector_in_hex())
+# print(s.get_bitvector_in_hex())
 
 AES_modulus = BitVector(bitstring='100011011')
 
