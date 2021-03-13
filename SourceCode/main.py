@@ -1,7 +1,16 @@
 # key= input()
+import time
+import os
+import binascii
 from collections import deque
 from bitvector_demo import *
+from BitVector import *
 
+
+keyText = "BUET CSE16 Batch"
+plainText="WillGraduateSoon"
+# cypherText=[]
+w=[]
 
 def printing(list):
     # print("round 0")
@@ -10,10 +19,36 @@ def printing(list):
         if (i+1 )%4 == 0  and (i+1)/4 !=11:
             print("round ",(i+1)/4)
 
-keyText = "BUET CSE16 Batch"
-plainText="WillGraduateSoon"
-cypherText=[]
-w=[]
+
+def sboxAndInvSboxGenerator():
+
+    AES_modulus = BitVector(bitstring='100011011')
+    Sbox= ['0x63']
+    InvSbox=[0]*256
+    for i in range(1,256):
+        b = BitVector( intVal = i, size = 8 )
+        b = b.gf_MI(AES_modulus, 8)
+
+        p= copy.copy(b)
+        q= copy.copy(b)
+        r= copy.copy(b)
+        t= copy.copy(b)
+
+        p =  p<< 1
+        q=q << 2
+        r = r<<3
+        t=t<<4
+
+        l=bin(int("63",16))
+        l=l[2:]
+        dummy = BitVector(bitstring= l)
+        ans=b^p^q^r^t^dummy
+        Sbox.append(hex(ans.intValue()))
+
+    for i in range(256):
+        InvSbox[int(Sbox[i],16)] = hex(i)
+        
+    print(InvSbox)
 
 
 def textMatrixBuilder(plain):
@@ -98,7 +133,7 @@ def xoringStarter(s,p):  # will be stored in p
     return p
 
 def encryptionStarter():
-    w = allKeyGenerator(keyText)
+    # w = allKeyGenerator(keyText)
     starter = w [0:4]
     n = len(starter)
     starter = [[row[i] for row in starter] for i in range(n)]
@@ -110,10 +145,10 @@ def encryptionStarter():
         roundKey = [[row[i] for row in roundKey] for i in range(n)]  #transposing to colum major format
         current= firstRound(current,roundKey,i)
 
-    global cypherText
+    # global cypherText
     cypherText = [[row[i] for row in current] for i in range(n)]
     s=""
-    print("cyphertext is", cypherText)
+    print("cypherText is", cypherText)
     s=" "
     for  i in range(len(current)):
         for  j in range(len(current[i])):
@@ -124,9 +159,9 @@ def encryptionStarter():
 
             s=s+ obj.decode("unicode_escape")
     print("string is ",s)
+    return cypherText
 
-
-def decryptionStarter():
+def decryptionStarter(cypherText):
     starter= w[-4:] 
     starter = [[row[i] for row in starter] for i in range(len(starter))]
     current= [[row[i] for row in cypherText] for i in range(len(cypherText))]
@@ -137,16 +172,20 @@ def decryptionStarter():
         roundKey = [[row[i] for row in roundKey] for i in range(4)]  #transposing to colum major format
         current= decryptRound(current,roundKey,i)
     current= [[row[i] for row in current] for i in range(4)]
-    print("decrypted key is " ,current)
     s=" "
+    decryptedHex=""
     for  i in range(len(current)):
         for  j in range(len(current[i])):
             if int(current[i][j],16)<=int('0xf',16):
                     current[i][j] = "{0:#0{1}x}".format(int(current[i][j],16),4)
             current[i][j]=current[i][j][2:]
-            obj=  bytes.fromhex(current[i][j])
-            s=s+ obj.decode("UTF-8")
-    print("string is ",s)
+            decryptedHex+=current[i][j]
+            # obj=  bytes.fromhex(current[i][j])
+            # s=s+ obj.decode("UTF-8")
+    # print("string is ",s)
+    # print("decrypted key is " ,current)
+
+    return decryptedHex
 
 def decryptRound(current,cycle,roundNum):
     for i in range(4):
@@ -223,9 +262,88 @@ def shifter(list,cycle):
     for i in range(cycle):
         list.append(list.pop(0))
 
+def fileEncryptor(current):
+    # global w
+    starter = w [0:4]
+    n = len(starter)
+    starter = [[row[i] for row in starter] for i in range(n)]
+    
+    # current = textMatrixBuilder(plainText)
+    xoringStarter(starter,current)
+
+    for i in range(1,11):
+        roundKey = w[4*i:4*i+4]
+        roundKey = [[row[i] for row in roundKey] for i in range(n)]  #transposing to colum major format
+        current= firstRound(current,roundKey,i)
+
+    cypherText = [[row[i] for row in current] for i in range(n)]
+    s=""
+    # print("cyphertext is", cypherText)
+    s=" "
+    for  i in range(len(current)):
+        for  j in range(len(current[i])):
+            if int(current[i][j],16)<=int('0xf',16):
+                    current[i][j] = "{0:#0{1}x}".format(int(current[i][j],16),4)
+            current[i][j]=current[i][j][2:]
+            # obj=  bytes.fromhex(current[i][j])
+
+            # s=s+ obj.decode("unicode_escape")
+    # print("string is ",s)
+    return cypherText
 def main():
-    encryptionStarter()
-    decryptionStarter()
+    file1=open('./SourceCode/dummy.txt',"rb")
+    file2= open("./SourceCode/newFile.txt", "wb")
+
+    b = file1.read()
+    hexa = binascii.hexlify(b)
+    print('hexa is ',hexa)
+    n=hexa.decode('utf-8')#this suppresses the b and encodes to string
+    # ni=hexa.decode('utf-8')#this suppresses the b and encodes to string
+
+    m=n.encode('utf-8')#this brings up the b with  and encode to bytearray
+    # print(n)
+    padderLen= 32- len(n)%32
+    if len(n)%32 != 0:
+        padder = "0" * padderLen
+        n= n + padder
+        print(len(n))
+    plain = []
+    temp=[]
+
+    for i in range(int(len(n)/2)):
+        temp.append("0x" + n[i*2 : i*2+2])
+        if (i+1)%4==0 :
+
+            plain.append(temp)
+            temp = []     #temp.clear will not work
+ 
+    # printing(plain)
+    # print(hex(int( temp[0],16)))
+    # hexa= '42554554204353453136204261746368'
+
+    
+    w = allKeyGenerator(keyText)
+    outputHex=""
+    print( "round count is" ,int(len(plain)/4))
+    for i in range(int(len(plain)/4)):
+        # print("round ",i)
+        y= plain[i*4:i*4+4]
+        # print(y)
+        y = [[row[t] for row in y] for t in range(4)]
+        x=fileEncryptor(y)
+        outputHex+=decryptionStarter(x)
+    outputHex = outputHex[0 : -padderLen]
+    outputHex=outputHex.encode('utf-8')
+    # print("output hex is ",outputHex)
+    # if(ni==outputHex):  
+    #     print('same for here')
+    
+    q = binascii.unhexlify(outputHex)
+    c=bytearray(q)
+    file2.write(c)
+    file2.close()
+    # l=encryptionStarter()
+    # k=decryptionStarter(l)
 
 if __name__ == "__main__": 
     main()
