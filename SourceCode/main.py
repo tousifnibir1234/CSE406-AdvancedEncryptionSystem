@@ -9,7 +9,7 @@ from BitVector import *
 
 
 keyText = "BUET CSE16 Batch"
-plainText="WillGraduate"
+plainText="WillGraduateSoon . Let's party"
 # cypherText=[]
 w=[]
 timer = {}
@@ -139,28 +139,28 @@ def textMatrixBuilder(plain):
     p= 0
     q= 4
     output= [ ]
-    if len(plain)>16:
-        plain= plain[0:16]
-    elif len(plain)<16:
+    
+    if(len(plain)%16!=0):
         global textPaddingLen
         textPaddingLen= 16-len(plain)
-        plain =plain+ "0000000000000000" 
+        padder = "0" * textPaddingLen
+        plain =plain+ padder 
 
         plain = plain[0:16]
     # print(plain)
     plainTextChunk= [ hex(ord(plain[i])) for i in range(len(plain))]
     
 
-    decryptedHex=""
-    for  i in range(len(plainTextChunk)):
-            if int(plainTextChunk[i],16)<=int('0xf',16):
-                    plainTextChunk[i] = "{0:#0{1}x}".format(int(plainTextChunk[i],16),4)
-            plainTextChunk[i]=plainTextChunk[i][2:]
-            decryptedHex+=plainTextChunk[i]
+    # decryptedHex=""
+    # for  i in range(len(plainTextChunk)):
+    #         if int(plainTextChunk[i],16)<=int('0xf',16):
+    #                 plainTextChunk[i] = "{0:#0{1}x}".format(int(plainTextChunk[i],16),4)
+    #         plainTextChunk[i]=plainTextChunk[i][2:]
+    #         decryptedHex+=plainTextChunk[i]
             
 
     print("plaintext : ",plain)
-    print("plainText  Hex : " ,decryptedHex,"\n")
+    # print("plainText  Hex : " ,decryptedHex,"\n")
 
     
 
@@ -170,7 +170,10 @@ def textMatrixBuilder(plain):
     n = len(output)
     output = [[row[i] for row in output] for i in range(n)]
     # print("plain text matrix is\n ")
-    return output
+    x=fileEncryptor(output)
+    decryptionStarter(x)
+
+    # return output
 
 
 
@@ -309,11 +312,11 @@ def decryptionStarter(cypherText):
                 s=s+ obj.decode("unicode_escape")
             except:
                 continue
-    if IsItText :
-        if textPaddingLen !=0:
-            s= s[0:-textPaddingLen]
-        print("Decrypted string is :",s)
-        print("decrypted Hex  is :" ,decryptedHex)
+    # if IsItText :
+        # if textPaddingLen !=0:
+        #     s= s[0:-textPaddingLen]
+    print("Decrypted string is :",s)
+    print("decrypted Hex  is :" ,decryptedHex)
 
     return decryptedHex
 
@@ -439,8 +442,8 @@ def fileHandler():
     b = file1.read()
     hexa = binascii.hexlify(b)
     n=hexa.decode('utf-8')#this suppresses the b and encodes to string
-
-    
+    file3.write("Main Hex Code of file is: ")
+    file3.write(n)
     # m=n.encode('utf-8')#this bring  s up the b with  and encode to bytearray
     # print(n)
     padderLen= 32- len(n)%32
@@ -471,7 +474,7 @@ def fileHandler():
         EncrytionAscii+=p[1]
         outputHex+=decryptionStarter(x)
 
-    file3.write("EncrytionHex is \n") ;file3.write(EncrytionHex) ;file3.write("\nEncrytionAscii is \n")
+    file3.write("\nEncryptionHex is \n") ;file3.write(EncrytionHex) ;file3.write("\nEncryptionAscii is \n")
     file3.write(EncrytionAscii);file3.write("\noutputHex is \n");file3.write(outputHex)
 
     outputHex = outputHex[0 : -padderLen]
@@ -505,21 +508,21 @@ def main():
     # print(f"Downloaded the tutorial in {toc - tic:0.4f} seconds")
 
 
-    x= input("Give the Plain text : ")
-    global plainText
-    plainText=x
+    # x= input("Give the Plain text : ")
+    # global plainText
+    # plainText=x
 
-    
-    l=encryptionStarter()
-    k=decryptionStarter(l)
-    sboxAndInvSboxGenerator()
+    textMatrixBuilder(plainText)
+    # l=encryptionStarter()
+    # k=decryptionStarter(l)
+    # sboxAndInvSboxGenerator()
 
     print("\n\n")
     for key,value in timer.items():
         print ( key ,"  : ", value)
     # print("\n",timer)
 
-    fileHandler()
+    # fileHandler()
 
 
 
