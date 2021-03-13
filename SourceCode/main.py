@@ -8,8 +8,8 @@ from collections import deque
 from BitVector import *
 
 
-keyText = "BUET CSE16 Batch"
-plainText="WillGraduateSoon . Let's party"
+keyText = "BUET CSE16 h"
+plainText="WillGraduateSoon"
 # cypherText=[]
 w=[]
 timer = {}
@@ -136,47 +136,86 @@ def sboxAndInvSboxGenerator():
 
 
 def textMatrixBuilder(plain):
+    print("plaintext : ",plain)
+
+    dummy= [ hex(ord(plain[i])) for i in range(len(plain))]    
+
+    decryptedHex=""
+    for  i in range(len(dummy)):
+            if int(dummy[i],16)<=int('0xf',16):
+                    dummy[i] = "{0:#0{1}x}".format(int(dummy[i],16),4)
+            dummy[i]=dummy[i][2:]
+            decryptedHex+=dummy[i]
+
+    print("plaintext Hex is : ",decryptedHex)
+
+
     p= 0
     q= 4
+    container=[]
     output= [ ]
-    
+    allEncryptors=[]
+    global timer
+
     if(len(plain)%16!=0):
         global textPaddingLen
-        textPaddingLen= 16-len(plain)
+        textPaddingLen= 16-(len(plain)%16)
         padder = "0" * textPaddingLen
         plain =plain+ padder 
 
-        plain = plain[0:16]
-    # print(plain)
-    plainTextChunk= [ hex(ord(plain[i])) for i in range(len(plain))]
+
+    for i in range(int(len(plain)/16)):
+        content = plain[i*16:i*16+16]
+        container.append(content)
+
+    cypher=[]
+    cypherHex=""
+    cypherAscii=""
+
+    tic1=time.perf_counter()
+    for l in range(len(container)):
+        plainTextChunk= [ hex(ord(container[l][i])) for i in range(len(container[l]))]    
+        output=[]
+        for i in range(4):
+            temp = plainTextChunk[p+i*4:q+i*4]
+            output.append(temp)
+        n = len(output)
+        output = [[row[i] for row in output] for i in range(n)]
+        # print("plain text matrix is\n ")
+        x=fileEncryptor(output)
+        cypher=getHexFromList(x)
+        cypherHex+=cypher[0]
+        cypherAscii+=cypher[1]
+
+        allEncryptors.append(x)
+
+    toc1=time.perf_counter()
+    timer["EncryptionTime"]= toc1-tic1
+
+    
+    print("\nCypherText String is : \n",cypherAscii)
+    print("cypherText Hex is :", cypherHex,"\n")
     
 
-    # decryptedHex=""
-    # for  i in range(len(plainTextChunk)):
-    #         if int(plainTextChunk[i],16)<=int('0xf',16):
-    #                 plainTextChunk[i] = "{0:#0{1}x}".format(int(plainTextChunk[i],16),4)
-    #         plainTextChunk[i]=plainTextChunk[i][2:]
-    #         decryptedHex+=plainTextChunk[i]
-            
+        # return output
+    result=[]
+    decryptedHex=""
+    decryptedString=""
 
-    print("plaintext : ",plain)
-    # print("plainText  Hex : " ,decryptedHex,"\n")
+    tic2=time.perf_counter()
+    for i in range(len(allEncryptors)):
+        result=decryptionStarter(allEncryptors[i])
+        decryptedHex+=result[0]
+        decryptedString+=result[1]
+    toc2=time.perf_counter()
+    timer["DecryptionTime"]= toc2-tic2
 
+
+    decryptedHex=decryptedHex[0:-(2*textPaddingLen)]
+    decryptedString=decryptedString[0:-textPaddingLen]
+    print("Decrypted string is :",decryptedString)
+    print("decrypted Hex  is :" ,decryptedHex)
     
-
-    for i in range(4):
-        temp = plainTextChunk[p+i*4:q+i*4]
-        output.append(temp)
-    n = len(output)
-    output = [[row[i] for row in output] for i in range(n)]
-    # print("plain text matrix is\n ")
-    x=fileEncryptor(output)
-    decryptionStarter(x)
-
-    # return output
-
-
-
 
 def generatorFunction(list,roundcondition):
     for i in range(4):
@@ -190,7 +229,6 @@ def generatorFunction(list,roundcondition):
     # print("generating output is " , temp)
     return temp
 
-    
 
 
 def allKeyGenerator(key):
@@ -200,8 +238,8 @@ def allKeyGenerator(key):
     if len(key)>16:
         key = key[0:16]
     elif len(key)<16:
-        key = "0000000000000000"+ key
-        key = key[-16:]
+        key = key+"0000000000000000"
+        key = key[0:16]
     hexKey=[]
     for i in range(len(key)):
         hexKey.append(hex(ord(key[i])))
@@ -282,7 +320,6 @@ def encryptionStarter():
     return cypherText
 
 def decryptionStarter(cypherText):
-    tic=time.perf_counter()
 
     starter= w[-4:] 
     starter = [[row[i] for row in starter] for i in range(len(starter))]
@@ -294,12 +331,7 @@ def decryptionStarter(cypherText):
         roundKey = [[row[i] for row in roundKey] for i in range(4)]  #transposing to colum major format
         current= decryptRound(current,roundKey,i)
     current= [[row[i] for row in current] for i in range(4)]
-    toc=time.perf_counter()
-
-    global timer
-    timer["DecrytionTime"]= toc-tic
-
-    s=" "
+    decryptedString=""
     decryptedHex=""
     for  i in range(len(current)):
         for  j in range(len(current[i])):
@@ -309,15 +341,15 @@ def decryptionStarter(cypherText):
             decryptedHex+=current[i][j]
             obj=  bytes.fromhex(current[i][j])
             try:
-                s=s+ obj.decode("unicode_escape")
+                decryptedString+=obj.decode("unicode_escape")
             except:
                 continue
     # if IsItText :
         # if textPaddingLen !=0:
         #     s= s[0:-textPaddingLen]
-    print("Decrypted string is :",s)
-    print("decrypted Hex  is :" ,decryptedHex)
-
+    
+    if IsItText:
+        return [decryptedHex,decryptedString]  
     return decryptedHex
 
 def decryptRound(current,cycle,roundNum):
@@ -433,6 +465,7 @@ def fileHandler():
     IsItText = False
     x=input("\n\n\nEnter the  file name for encryption  : " )
     
+    allCyphers=[]
 
     file1=open(x,"rb")
     file2= open("decrypted"+x, "wb") 
@@ -462,8 +495,8 @@ def fileHandler():
  
     # print( "round count is" ,int(len(plain)/4))
     outputHex=""
-    EncrytionHex=" "
-    EncrytionAscii=" "
+    EncrytionHex=""
+    EncrytionAscii=""
     for i in range(int(len(plain)/4)):
         # print("round ",i)
         y= plain[i*4:i*4+4]
@@ -472,7 +505,10 @@ def fileHandler():
         p=getHexFromList(x)
         EncrytionHex+=p[0]
         EncrytionAscii+=p[1]
-        outputHex+=decryptionStarter(x)
+        allCyphers.append(x)
+    
+    for i in range(len(allCyphers)):
+        outputHex+=decryptionStarter(allCyphers[i])
 
     file3.write("\nEncryptionHex is \n") ;file3.write(EncrytionHex) ;file3.write("\nEncryptionAscii is \n")
     file3.write(EncrytionAscii);file3.write("\noutputHex is \n");file3.write(outputHex)
@@ -490,39 +526,37 @@ def fileHandler():
 
 
 def getHexFromList(current):
-    encryption = ""
-    s=""
+    asciiencryption = ""
+    hexVal=""
     for  i in range(len(current)):
         for  j in range(len(current[i])):
             if int(current[i][j],16)<=int('0xf',16):
                     current[i][j] = "{0:#0{1}x}".format(int(current[i][j],16),4)
             obj=  bytes.fromhex(current[i][j][2:])
-            s+=current[i][j][2:]  
+            hexVal+=current[i][j][2:]  
             try:
-                encryption+= obj.decode("unicode_escape")
+                asciiencryption+= obj.decode("unicode_escape")
             except:
                 continue
-    return [s ,encryption]
+    return [hexVal ,asciiencryption]
 def main():
     w = allKeyGenerator(keyText)
     # print(f"Downloaded the tutorial in {toc - tic:0.4f} seconds")
 
 
-    # x= input("Give the Plain text : ")
-    # global plainText
-    # plainText=x
+    x= input("Give the Plain text : ")
+    global plainText
+    plainText=x
 
     textMatrixBuilder(plainText)
-    # l=encryptionStarter()
-    # k=decryptionStarter(l)
-    # sboxAndInvSboxGenerator()
+    
+    sboxAndInvSboxGenerator()
 
     print("\n\n")
     for key,value in timer.items():
         print ( key ,"  : ", value)
-    # print("\n",timer)
 
-    # fileHandler()
+    fileHandler()
 
 
 
